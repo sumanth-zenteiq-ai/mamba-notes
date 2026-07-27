@@ -97,13 +97,20 @@ Two structural properties fall straight out of that one definition:
 - **Lower triangular**, because $T_{i,j}=0$ whenever $j>i$. That's causality written as a matrix: output $i$ is never allowed to depend on an input $j$ that hasn't happened yet.
 - **Toeplitz**, meaning constant along every diagonal, because $T_{i,j}=C\bar A^{i-j}\bar B$ depends only on the lag $i-j$, never on $i$ and $j$ individually. This is a direct consequence of $\bar A,\bar B,C$ being fixed regardless of position: any two entries sharing the same lag are forced to be identical.
 
-Written out fully for $L=3$, first in terms of the kernel entries, then with our running example's numbers substituted in:
+Written out fully for $L=3$, first in terms of the kernel entries, then via the $C\bar A^k\bar B$ formula, then with our running example's numbers substituted in (shown as plain grids rather than LaTeX matrices, since matrix environments don't render reliably on every markdown viewer, including GitHub):
 
-$$T = \begin{bmatrix} K_0 & 0 & 0 \\ K_1 & K_0 & 0 \\ K_2 & K_1 & K_0 \end{bmatrix} = \begin{bmatrix} C\bar A^0\bar B & 0 & 0 \\ C\bar A^1\bar B & C\bar A^0\bar B & 0 \\ C\bar A^2\bar B & C\bar A^1\bar B & C\bar A^0\bar B \end{bmatrix} = \begin{bmatrix} 1.0 & 0 & 0 \\ 0.55 & 1.0 & 0 \\ 0.425 & 0.55 & 1.0 \end{bmatrix}$$
+```
+        | K0   0    0  |        | C A^0 B     0        0     |        | 1.0    0     0   |
+T   =   | K1   K0   0  |    =   | C A^1 B   C A^0 B     0     |    =   | 0.55  1.0    0   |
+        | K2   K1   K0 |        | C A^2 B   C A^1 B   C A^0 B |        | 0.425 0.55  1.0  |
+```
+(writing $\bar A$ as `A` inside the grid since the bar doesn't render in plain text)
 
-and checking it directly against section 2.3's ground truth:
+Checking $Tu$ directly against section 2.3's ground truth, row by row:
 
-$$Tu = \begin{bmatrix} 1.0 & 0 & 0 \\ 0.55 & 1.0 & 0 \\ 0.425 & 0.55 & 1.0 \end{bmatrix}\begin{bmatrix}2\\-1\\3\end{bmatrix} = \begin{bmatrix} 1.0\cdot2 \\ 0.55\cdot2+1.0\cdot(-1) \\ 0.425\cdot2+0.55\cdot(-1)+1.0\cdot3 \end{bmatrix} = \begin{bmatrix}2.0\\0.1\\3.30\end{bmatrix}$$
+- row 1: $1.0\cdot2 = 2.0$
+- row 2: $0.55\cdot2 + 1.0\cdot(-1) = 0.1$
+- row 3: $0.425\cdot2 + 0.55\cdot(-1) + 1.0\cdot3 = 3.30$
 
 matching $y_1,y_2,y_3$ exactly.
 
@@ -163,13 +170,25 @@ $$x_1^{(1)} = \bar A^{(1)} x_0^{(1)} + \bar B^{(1)} u_1^{(1)} = [0.8\cdot0+1.0\c
 $$x_2^{(1)} = [0.8\cdot1.0+1.0\cdot1,\ 0.4\cdot0.25+0.25\cdot1] = [1.8, 0.35], \qquad y_2^{(1)} = 1\cdot1.8+2\cdot0.35 = 2.5$$
 $$x_3^{(1)} = [0.8\cdot1.8+1.0\cdot(-2),\ 0.4\cdot0.35+0.25\cdot(-2)] = [-0.56, -0.36], \qquad y_3^{(1)} = 1\cdot(-0.56)+2\cdot(-0.36) = -1.28$$
 
-Now stack both channels together and look at the shapes that fall out:
+Now stack both channels together and look at the shapes that fall out (shown as plain grids, not LaTeX matrices, since matrix environments don't render reliably on every markdown viewer, including GitHub):
 
-$$u = \begin{bmatrix} u_1 \\ u_2 \\ u_3 \end{bmatrix} = \begin{bmatrix} 2 & 1 \\ -1 & 1 \\ 3 & -2 \end{bmatrix} \quad \text{shape } (L,D) = (3,2)$$
+```
+u  =  |  2   1 |     shape (L,D) = (3,2)
+      | -1   1 |
+      |  3  -2 |
+```
 
-$$x_1 = \begin{bmatrix} 1.0 & 1.0 \\ 1.0 & 0.25 \end{bmatrix},\ x_2 = \begin{bmatrix} 0.4 & -0.3 \\ 1.8 & 0.35 \end{bmatrix},\ x_3 = \begin{bmatrix} 1.86 & 1.44 \\ -0.56 & -0.36 \end{bmatrix} \quad \text{each shape } (D,N) = (2,2)$$
+```
+x1 = | 1.0  1.0  |     x2 = | 0.4  -0.3 |     x3 = |  1.86   1.44 |
+     | 1.0  0.25 |          | 1.8   0.35|          | -0.56  -0.36 |
+                    each shape (D,N) = (2,2)
+```
 
-$$y = \begin{bmatrix} 2.0 & 1.5 \\ 0.1 & 2.5 \\ 3.30 & -1.28 \end{bmatrix} \quad \text{shape } (L,D) = (3,2)$$
+```
+y  =  | 2.0    1.5  |     shape (L,D) = (3,2)
+      | 0.1    2.5  |
+      | 3.30  -1.28 |
+```
 
 That is exactly where $(B,L,D)$ for $u$ and $y$, and $(B,L,D,N)$ for $x$, come from: $D$ completely independent single-channel SSMs, each with its own $N$-dimensional state, stacked along a new axis. Nothing in this computation ever mixes channel 0's numbers with channel 1's. The cost per time step is $D$ separate chunks of $O(N)$ work, giving $O(D\cdot N)$ per step and $O(L\cdot D\cdot N)$ overall, which is exactly the recurrent-scan row of the complexity table above.
 
